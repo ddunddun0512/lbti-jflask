@@ -1,73 +1,29 @@
-import os
-from flask import Flask, request, jsonify
-from datetime import datetime, timedelta
-
-app = Flask(__name__)
-
-# 날짜 포맷 통일 (yyyy-mm-dd)
-def format_date(d: datetime) -> str:
-    return d.strftime("%Y-%m-%d")
-
-# 자정으로 맞춰서 계산 안정화
-def to_midnight(d: datetime) -> datetime:
-    return d.replace(hour=0, minute=0, second=0, microsecond=0)
-
-# 복약 진행 계산
-def calculate_progress(start_date_str: str, months: int):
-    today = to_midnight(datetime.now())
-    start = to_midnight(datetime.strptime(start_date_str, "%Y-%m-%d"))
-    end = to_midnight(start + timedelta(days=months * 30))  # 단순히 30일 × 개월 수
-
-    total_days = (end - start).days + 1
-    elapsed_days = (today - start).days + 1
-    safe_elapsed = max(0, min(elapsed_days, total_days))
-    progress_percent = round((safe_elapsed / total_days) * 100, 1)
-    remaining_days = max((end - today).days, 0)
-
-    return {
-        "startDate": format_date(start),
-        "endDate": format_date(end),
-        "elapsedDays": safe_elapsed,
-        "totalDays": total_days,
-        "progressPercent": progress_percent,
-        "remainingDays": remaining_days
-    }
-
-# 기본 페이지 (테스트용)
-@app.route("/")
-def home():
-    return "📌 복약계산기 Flask 서버 실행 중!"
-
-# 카카오 스킬 엔드포인트
 @app.route("/medication", methods=["POST"])
 def medication():
     try:
         req = request.get_json(force=True)
+        print("DEBUG req:", req)  # 로그 확인용
         params = req.get("action", {}).get("params", {})
 
         start_date = params.get("startDate")
         months_raw = params.get("months")
 
-        # months 값 안전 변환
-        months = 0
-        if months_raw:
-            try:
-                months = int(months_raw)
-            except ValueError:
-                months = 0
+        # months 값 안전 변환 (문자/숫자 다 수용)
+        try:
+            months = int(str(months_raw).strip())
+        except Exception:
+            months = 0
 
-        # 파라미터가 제대로 안 들어왔을 경우 → 그냥 기본 오류 메시지 반환
         if not start_date or months <= 0:
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": "⚠️ 입력값을 확인해주세요."}}
+                        {"simpleText": {"text": f"⚠️ 입력값 오류 (startDate={start_date}, months={months_raw})"}}
                     ]
                 }
             })
 
-        # 정상 계산
         prog = calculate_progress(start_date, months)
         text = (
             f"📌 복약 종료일: {prog['endDate']}\n"
@@ -89,15 +45,12 @@ def medication():
         })
 
     except Exception as e:
+        print("ERROR:", e)
         return jsonify({
             "version": "2.0",
             "template": {
                 "outputs": [
-                    {"simpleText": {"text": f"⚠️ 오류 발생: {str(e)}"}}
+                    {"simpleText": {"text": f"⚠️ 서버 오류: {str(e)}"}}
                 ]
             }
         })
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
