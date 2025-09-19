@@ -16,8 +16,7 @@ def to_midnight(d: datetime) -> datetime:
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
     start = to_midnight(datetime.strptime(start_date_str, "%Y-%m-%d"))
-    # 종료일 = 시작일 + 개월 수 (단순 30일 × 개월 수로 계산)
-    end = to_midnight(start + timedelta(days=months * 30))
+    end = to_midnight(start + timedelta(days=months * 30))  # 단순히 30일 × 개월 수
 
     total_days = (end - start).days + 1
     elapsed_days = (today - start).days + 1
@@ -31,7 +30,7 @@ def calculate_progress(start_date_str: str, months: int):
         "elapsedDays": safe_elapsed,
         "totalDays": total_days,
         "progressPercent": progress_percent,
-        "remainingDays": remaining_days,
+        "remainingDays": remaining_days
     }
 
 # 기본 페이지 (테스트용)
@@ -43,13 +42,13 @@ def home():
 @app.route("/medication", methods=["POST"])
 def medication():
     try:
-        req = request.get_json(force=True)  # 카카오에서 보내는 JSON 파라미터 받기
+        req = request.get_json(force=True)
         params = req.get("action", {}).get("params", {})
 
         start_date = params.get("startDate")
         months_raw = params.get("months")
 
-        # months 값 안전 변환 처리
+        # months 값 안전 변환
         months = 0
         if months_raw:
             try:
@@ -57,18 +56,19 @@ def medication():
             except ValueError:
                 months = 0
 
+        # 파라미터가 제대로 안 들어왔을 경우 → 그냥 기본 오류 메시지 반환
         if not start_date or months <= 0:
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-01, 6)"}}
+                        {"simpleText": {"text": "⚠️ 입력값을 확인해주세요."}}
                     ]
                 }
             })
 
+        # 정상 계산
         prog = calculate_progress(start_date, months)
-
         text = (
             f"📌 복약 종료일: {prog['endDate']}\n"
             f"📈 복약 진행률: {prog['progressPercent']}%\n"
