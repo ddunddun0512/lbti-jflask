@@ -16,8 +16,8 @@ def to_midnight(d: datetime) -> datetime:
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
     start = to_midnight(datetime.strptime(start_date_str, "%Y-%m-%d"))
-    # 종료일 = 시작일 + 개월 수 (포함 계산 위해 하루 빼줌)
-    end = to_midnight(start + timedelta(days=months*30))  # 단순히 30일×개월수로 계산
+    # 종료일 = 시작일 + 개월 수 (단순 30일 × 개월 수로 계산)
+    end = to_midnight(start + timedelta(days=months * 30))
 
     total_days = (end - start).days + 1
     elapsed_days = (today - start).days + 1
@@ -31,7 +31,7 @@ def calculate_progress(start_date_str: str, months: int):
         "elapsedDays": safe_elapsed,
         "totalDays": total_days,
         "progressPercent": progress_percent,
-        "remainingDays": remaining_days
+        "remainingDays": remaining_days,
     }
 
 # 기본 페이지 (테스트용)
@@ -47,14 +47,22 @@ def medication():
         params = req.get("action", {}).get("params", {})
 
         start_date = params.get("startDate")
-        months = int(params.get("months", 0))
+        months_raw = params.get("months")
 
-        if not start_date or not months:
+        # months 값 안전 변환 처리
+        months = 0
+        if months_raw:
+            try:
+                months = int(months_raw)
+            except ValueError:
+                months = 0
+
+        if not start_date or months <= 0:
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-01, 3개월)"}}
+                        {"simpleText": {"text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-01, 6)"}}
                     ]
                 }
             })
