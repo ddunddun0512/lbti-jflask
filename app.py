@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 
-app = Flask(__name__)   # ✅ 맨 위에 있어야 함
+app = Flask(__name__)
 
 # 날짜 포맷 통일 (yyyy-mm-dd)
 def format_date(d: datetime) -> str:
@@ -16,7 +16,7 @@ def to_midnight(d: datetime) -> datetime:
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
     start = to_midnight(datetime.strptime(start_date_str, "%Y-%m-%d"))
-    end = to_midnight(start + timedelta(days=months * 30))
+    end = to_midnight(start + timedelta(days=months * 30))  # 단순 30일×개월 계산
 
     total_days = (end - start).days + 1
     elapsed_days = (today - start).days + 1
@@ -47,11 +47,24 @@ def medication():
         start_date = params.get("startDate")
         months_raw = params.get("months")
 
+        # ✅ 날짜 파라미터 검증 (엔터티 이름이 그대로 들어온 경우 방어)
+        if start_date and start_date.startswith("sys."):
+            return jsonify({
+                "version": "2.0",
+                "template": {
+                    "outputs": [
+                        {"simpleText": {"text": "⚠️ 날짜 입력이 잘못 전달됐어요. 예: 2025-09-07"}}
+                    ]
+                }
+            })
+
+        # ✅ months 값 안전 변환
         try:
             months = int(str(months_raw).strip())
         except Exception:
             months = 0
 
+        # ✅ 입력값 오류 처리
         if not start_date or months <= 0:
             return jsonify({
                 "version": "2.0",
@@ -62,11 +75,14 @@ def medication():
                 }
             })
 
+        # ✅ 정상 계산
         prog = calculate_progress(start_date, months)
         text = (
+            f"📅 시작일: {prog['startDate']}\n"
             f"📌 복약 종료일: {prog['endDate']}\n"
             f"📈 복약 진행률: {prog['progressPercent']}%\n"
-            f"⏳ 남은 일수: D-{prog['remainingDays']}"
+            f"⏳ 남은 일수: {prog['remainingDays']}일 (D-{prog['remainingDays']})\n"
+            f"💪 오늘도 잊지 말고 복약 파이팅!"
         )
 
         return jsonify({
@@ -76,8 +92,8 @@ def medication():
                     {"simpleText": {"text": text}}
                 ],
                 "quickReplies": [
-                    {"label": "메인", "action": "message", "messageText": "메인메뉴"},
-                    {"label": "다시계산", "action": "message", "messageText": "복약 진행 확인"}
+                    {"label": "메인메뉴", "action": "message", "messageText": "메인메뉴"},
+                    {"label": "다시 계산하기", "action": "message", "messageText": "복약 진행 확인"}
                 ]
             }
         })
