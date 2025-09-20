@@ -94,7 +94,7 @@ def medication():
             f"📅 시작일: {prog['startDate']}\n"
             f"📌 복약 종료일: {prog['endDate']}\n"
             f"📈 복약 진행률: {prog['progressPercent']}%\n"
-            f"⏳ 남은 일수: {prog['remainingDays']}일 (D-{prog['remainingDays']})\n"
+            f"⏳ 남은 일수: {prog['remainingDays']}일 (D-{prog['remainingDays']})\n\n"
             f"💪 오늘도 잊지 말고 복약 파이팅!"
         )
 
