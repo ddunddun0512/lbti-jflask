@@ -12,6 +12,20 @@ def format_date(d: datetime) -> str:
 def to_midnight(d: datetime) -> datetime:
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
+# 날짜 문자열 정규화 (예: 20250907 → 2025-09-07)
+def normalize_date(date_str: str) -> str:
+    try:
+        if len(date_str) == 8 and date_str.isdigit():
+            # YYYYMMDD → YYYY-MM-DD
+            return f"{date_str[0:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        elif len(date_str) == 10 and date_str[4] == "-" and date_str[7] == "-":
+            # 이미 YYYY-MM-DD 형태
+            return date_str
+    except:
+        pass
+    # 인식 못 하면 그대로 반환 (에러 처리되도록)
+    return date_str
+
 # 복약 진행 계산
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
@@ -49,6 +63,10 @@ def medication():
         start_date = params.get("startDate")
         months = params.get("months")
 
+        # 날짜 정규화
+        if start_date:
+            start_date = normalize_date(start_date)
+
         # months를 안전하게 정수 변환
         try:
             months = int(months)
@@ -61,7 +79,7 @@ def medication():
                 "template": {
                     "outputs": [
                         {"simpleText": {
-                            "text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-01, 3개월)"
+                            "text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-07 또는 20250907, 3개월)"
                         }}
                     ]
                 }
