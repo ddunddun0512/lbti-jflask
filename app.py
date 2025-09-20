@@ -12,6 +12,16 @@ def format_date(d: datetime) -> str:
 def to_midnight(d: datetime) -> datetime:
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
+# ✅ 날짜 문자열 정규화 (20250907 → 2025-09-07)
+def normalize_date(date_str: str) -> str:
+    if not date_str:
+        return ""
+    date_str = date_str.strip()
+    # yyyyMMdd → yyyy-MM-dd
+    if len(date_str) == 8 and date_str.isdigit():
+        return f"{date_str[0:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    return date_str
+
 # 복약 진행 계산
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
@@ -44,8 +54,11 @@ def medication():
         print("DEBUG req:", req)  # 로그 확인용
         params = req.get("action", {}).get("params", {})
 
-        start_date = params.get("startDate")
+        start_date_raw = params.get("startDate")
         months_raw = params.get("months")
+
+        # ✅ 날짜 정규화 적용
+        start_date = normalize_date(start_date_raw)
 
         # ✅ 날짜 파라미터 검증 (엔터티 이름이 그대로 들어온 경우 방어)
         if start_date and start_date.startswith("sys."):
@@ -53,7 +66,7 @@ def medication():
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": "⚠️ 날짜 입력이 잘못 전달됐어요. 예: 2025-09-07"}}
+                        {"simpleText": {"text": "⚠️ 날짜 입력이 잘못 전달됐어요. 예: 2025-09-07 또는 20250907"}}
                     ]
                 }
             })
@@ -70,7 +83,7 @@ def medication():
                 "version": "2.0",
                 "template": {
                     "outputs": [
-                        {"simpleText": {"text": f"⚠️ 입력값 오류 (startDate={start_date}, months={months_raw})"}}
+                        {"simpleText": {"text": f"⚠️ 입력값 오류 (startDate={start_date_raw}, months={months_raw})"}}
                     ]
                 }
             })
