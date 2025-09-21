@@ -109,15 +109,20 @@ def medication():
             }
         })
 
-    except Exception as e:
+        except Exception as e:
         return jsonify({
             "version": "2.0",
             "template": {
                 "outputs": [
                     {"simpleText": {"text": f"⚠️ 오류 발생: {str(e)}"}}
+                ],
+                "quickReplies": [
+                    {"label": "메인", "action": "message", "messageText": "메인메뉴"},
+                    {"label": "다시계산", "action": "message", "messageText": "복약 진행 확인"}
                 ]
             }
         })
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
