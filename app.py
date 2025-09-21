@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
+# -------------------------------
+# 날짜 관련 유틸 함수
+# -------------------------------
+
 # 날짜 포맷 통일 (yyyy-mm-dd)
 def format_date(d: datetime) -> str:
     return d.strftime("%Y-%m-%d")
@@ -23,10 +27,13 @@ def normalize_date(date_str: str) -> str:
             return date_str
     except:
         pass
-    # 인식 못 하면 그대로 반환 (에러 처리되도록)
+    # 인식 못 하면 그대로 반환 (→ 이후 except 처리됨)
     return date_str
 
+
+# -------------------------------
 # 복약 진행 계산
+# -------------------------------
 def calculate_progress(start_date_str: str, months: int):
     today = to_midnight(datetime.now())
     start = to_midnight(datetime.strptime(start_date_str, "%Y-%m-%d"))
@@ -48,22 +55,29 @@ def calculate_progress(start_date_str: str, months: int):
         "remainingDays": remaining_days
     }
 
+
+# -------------------------------
 # 기본 페이지 (테스트용)
+# -------------------------------
 @app.route("/")
 def home():
     return "📌 복약계산기 Flask 서버 실행 중!"
 
+
+# -------------------------------
 # 카카오 스킬 엔드포인트
+# -------------------------------
 @app.route("/medication", methods=["POST"])
 def medication():
     try:
-        req = request.get_json(force=True)  # 카카오에서 보내는 JSON 파라미터 받기
+        # 카카오에서 보내는 JSON 받기
+        req = request.get_json(force=True)
         params = req.get("action", {}).get("params", {})
 
         start_date = params.get("startDate")
         months = params.get("months")
 
-        # 날짜 정규화
+        # 날짜 정규화 (20250907 → 2025-09-07)
         if start_date:
             start_date = normalize_date(start_date)
 
@@ -73,18 +87,20 @@ def medication():
         except Exception:
             months = 0
 
+        # 필수값 누락 시 안내 메시지
         if not start_date or not months:
             return jsonify({
                 "version": "2.0",
                 "template": {
                     "outputs": [
                         {"simpleText": {
-                            "text": "❗ 시작일과 복약 개월 수를 입력해주세요 (예: 2025-09-07 또는 20250907, 3개월)"
+                            "text": "❗ 시작일과 복약 개월 수를 입력해주세요\n(예: 2025-09-07 또는 20250907, 3개월)"
                         }}
                     ]
                 }
             })
 
+        # 정상 계산
         prog = calculate_progress(start_date, months)
 
         text = (
@@ -109,12 +125,19 @@ def medication():
             }
         })
 
-        except Exception as e:
+    except Exception:
+        # 오류 처리 (잘못된 날짜, 없는 날짜 등)
         return jsonify({
             "version": "2.0",
             "template": {
                 "outputs": [
-                    {"simpleText": {"text": f"⚠️ 오류 발생: {str(e)}"}}
+                    {"simpleText": {
+                        "text": (
+                            "⚠️ 입력하신 날짜나 개월 수가 잘못되었을 수 있어요.\n"
+                            "👉 날짜는 실제 존재하는 형식(예: 2024-02-29 또는 20250229)으로 입력해주세요.\n\n"
+                            "다시 확인하시려면 아래 버튼을 눌러주세요."
+                        )
+                    }}
                 ],
                 "quickReplies": [
                     {"label": "메인", "action": "message", "messageText": "메인메뉴"},
@@ -124,6 +147,9 @@ def medication():
         })
 
 
+# -------------------------------
+# 실행 (Render 배포용)
+# -------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
